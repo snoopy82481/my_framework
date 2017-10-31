@@ -75,7 +75,7 @@ Function updateManager {
 		if($managerDetails.displayName -ne $managerName){
 			Write-Host $Name manager was not able to be changed;
 		}else{
-			Write-host $Name manager updated to Ashley Sprague;
+			Write-host $Name manager updated to $manager;
 		}
 	}
 }
