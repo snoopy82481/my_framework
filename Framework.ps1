@@ -7,6 +7,10 @@ Write-Output "I'm version 3.0 or above";
 
 #Start GLOBAL Params
 
+#.NET Dependancies
+[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices")
+[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices.AccountManagement")
+
 #Imports
 Import-Module ActiveDirectory
 
@@ -24,6 +28,8 @@ $foldersProgramFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86");
 [String]${UserDomain},[String]${UserName} = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.split("\");
 $localHostName = [System.Net.Dns]::GetHostEntry("localhost").HostName;
 $RidMaster = ([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).RidRoleOwner.name;
+$DomainName = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain().name
+$PrincipleContext = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext(1,$DomainName)
 
 #End GLOBAL Params
 
@@ -81,3 +87,5 @@ Function updateManager {
 }
 
 #End FUNCTIONS
+
+#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($context, "a_valid_samaccountname")
