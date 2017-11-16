@@ -86,6 +86,22 @@ Function updateManager {
 	}
 }
 
+Function CreateUser {
+	<#
+		.SYNOPSIS
+		Function to create a user account
+		.DESCRIPTION
+		This function is used to create a new user account in AD.
+		.PARAMETER Name
+		The full name of the user
+	#>
+	
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$True,HelpMessage='What is the full name of the user?'][String()]$fullUserName
+	)
+	
+}
 #End FUNCTIONS
 
 #$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($context, "a_valid_samaccountname")
