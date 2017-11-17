@@ -89,7 +89,8 @@ Function updateManager {
 	}
 }
 
-Function CreateUser {
+Function CreateUser
+{
 	<#
 		.SYNOPSIS
 		Function to create a user account
@@ -101,8 +102,56 @@ Function CreateUser {
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True,HelpMessage='What is the full name of the user?'][String()]$fullUserName
+		[Parameter(Mandatory=$True,HelpMessage='What is the full name of the user?')][String()]$fullUserName
 	)
+
+		Function createSAMAccountName
+		{
+			#steps to create username for environment
+			
+			<#
+				.SYNOPSIS
+				Function to formulate the samaccountname of an account.
+				.DESCRIPTION
+				Function used to forumulate a samaccountname for the environment.
+				.PARAMETER NameInput
+				The full name of the user
+				.PARAMETER Type
+				What type of samaccountname is it, first.last or first inital and last name.  You can use initallastname, iln, firstnamelastname, fln.
+			#>
+			
+			[CmdletBinding()]
+			param(
+				[Parameter(Mandatory=$True,HelpMessage='What is the name of the person?')][String()]$NameInput,
+				[Parameter(Mandatory=$True,HelpMessage='What is the type of samaccountname is it, first.last or first inital and last name?')][String()]$Type
+			)
+				
+			Function initallastname
+			{
+				$FirstInitial =  $NameInput.split(" ")[0].Substring(0,1).ToLower();
+				$LastName = $NameInput.split(" ")[1].ToLower();
+				
+				$OutputName = ("{0}{1}" -f $FirstInitial,$LastName).ToLower();
+				
+				return $outputName;
+			}
+			
+			Function firstnamelastname
+			{
+				$OutputName = ($NameInput.replace(" ",".")).ToLower();
+				
+				return $outputName;
+			}
+			
+			switch ($type)
+			{
+				{$_ -in "initallastname","iln"} {$samaccountname = initallastname};
+				{$_ -in "firstnamelastname","fln"} {$samaccountname = firstnamelastname};
+			}
+			
+			return $samaccountname;
+		}
+	
 	
 }
 #End FUNCTIONS
