@@ -44,14 +44,17 @@ Function updateManager {
 		This function will update the manager of anyone in the Supervisor_Change.txt file located in My Documents.  It uses first and last name and gets samAccountName.
 		.PARAMETER manager
 		The manager you will be changeing to
+		.PARAMETER file
+		The file you will use to update multiple users manager
 	#>
 	
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$True,HelpMessage='What is the name of the manager you are changing to?')][String()]$managerName
+		[Parameter(Mandatory=$True,HelpMessage='What is the name of the file you are going to use?')][String()]$file
 	)
 
-	$file = "$foldersMyDocuments\supervisor_change.txt"
+	#$file = "$foldersMyDocuments\supervisor_change.txt"
 	$NameList = Get-Content $file
 
 	Foreach ($Name in $NameList){
