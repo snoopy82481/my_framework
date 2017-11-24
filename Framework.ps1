@@ -105,25 +105,28 @@ Function CreateUser
 		[Parameter(Mandatory=$True,HelpMessage='What is the full name of the user?')][String()]$fullUserName
 	)
 
-		Function createSAMAccountName
+		Function createsamAccountName
 		{
 			#steps to create username for environment
 			
 			<#
 				.SYNOPSIS
-				Function to formulate the samaccountname of an account.
+				Function to formulate the samAccountName of an account.
 				.DESCRIPTION
-				Function used to forumulate a samaccountname for the environment.
+				Function used to forumulate a samAccountName for the environment.
 				.PARAMETER NameInput
 				The full name of the user
 				.PARAMETER Type
-				What type of samaccountname is it, first.last or first inital and last name.  You can use initallastname, iln, firstnamelastname, fln.
+				What type of samAccountName is it, first.last or first inital and last name.  You can use initallastname, iln, firstnamelastname, fln.
+				.PARAMETER Password
+				The password that will be set on account creation
 			#>
 			
 			[CmdletBinding()]
 			param(
 				[Parameter(Mandatory=$True,HelpMessage='What is the name of the person?')][String()]$NameInput,
-				[Parameter(Mandatory=$True,HelpMessage='What is the type of samaccountname is it, first.last or first inital and last name?')][String()]$Type
+				[Parameter(Mandatory=$True,HelpMessage='What is the type of samAccountName is it, first.last or first inital and last name?')][String()]$Type,
+				[Parameter(Mandatory=$True,HelpMessage='What is the password you would like to set?')][String()]$Password
 			)
 				
 			Function initallastname
@@ -145,13 +148,29 @@ Function CreateUser
 			
 			switch ($type)
 			{
-				{$_ -in "initallastname","iln"} {$samaccountname = initallastname};
-				{$_ -in "firstnamelastname","fln"} {$samaccountname = firstnamelastname};
+				{$_ -in "initallastname","iln"} {$samAccountName = initallastname};
+				{$_ -in "firstnamelastname","fln"} {$samAccountName = firstnamelastname};
 			}
 			
-			return $samaccountname;
+			return $samAccountName;
 		}
 	
+	switch ($type)
+	{
+		"Initial" {$samAccountName = createsamAccountName $fullUserName initallastname};
+		"FullName" {$samAccountName = createsamAccountName $fullUserName firstnamelastname};
+	}
+	
+	$userPrincipalName = "$samAccountName@test.com"
+	
+	switch ($stuff)
+	{
+		"single" {New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount}
+		"template" {
+				$TemplateAccount = Get-ADUser -Identity "templateaccount"
+				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName
+			}
+	}
 	
 }
 #End FUNCTIONS
