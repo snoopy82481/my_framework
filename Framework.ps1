@@ -103,6 +103,7 @@ function CreateUser
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String()]$fullUserName
+		[Parameter(Mandatory=$FALSE,HelpMessage='Will this be based off a template or no?')][Bool]$Template
 	)
 
 		function createsamAccountName
@@ -175,16 +176,27 @@ function CreateUser
 	
 	$userPrincipalName = "$samAccountName@test.com"
 	
+	if($Template){
+		$TemplateAccount = Get-ADUser -Identity "templateaccount";
+		New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;			
+	}
+	else
+	{
+		New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount
+	}
+	
+	<#
 	switch ($stuff)
 	{
-		"single" {New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount}
-		"template" {
+		default {New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount}
+		template {
 				$TemplateAccount = Get-ADUser -Identity "templateaccount";
 				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;
 			}
 	}
 	
 }
+#>
 #End FUNCTIONS
 
 #$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($context, "a_valid_samaccountname")
