@@ -194,9 +194,8 @@ function CreateUser
 				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;
 			}
 	}
-	
+	#>	
 }
-#>
 #End FUNCTIONS
 
 #$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($context, "a_valid_samaccountname")
