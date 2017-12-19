@@ -35,11 +35,11 @@ $PrincipleContext = New-Object -TypeName System.DirectoryServices.AccountManagem
 
 #Start FUNCTIONS
 
-Function updateManager {
+function updateManager {
   #Convert to use .NET vs AD module
 	<#
 		.SYNOPSIS
-		Function to update manager in AD
+		function to update manager in AD
 		.DESCRIPTION
 		This function will update the manager of anyone in the Supervisor_Change.txt file located in My Documents.  It uses first and last name and gets samAccountName.
 		.PARAMETER manager
@@ -50,14 +50,14 @@ Function updateManager {
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True,HelpMessage='What is the name of the manager you are changing to?')][String()]$managerName
-		[Parameter(Mandatory=$True,HelpMessage='What is the name of the file you are going to use?')][String()]$file
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the manager you are changing to?')][String()]$managerName
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the file you are going to use?')][String()]$file
 	)
 
 	#$file = "$foldersMyDocuments\supervisor_change.txt"
 	$NameList = Get-Content $file
 
-	Foreach ($Name in $NameList){
+	foreach ($Name in $NameList){
 		$Namecount = $Name.split(" ").count
 		$userFirstName = $Name.split(" ")[0];
 		$managerFirstName = $managerName.split(" ")[0];
@@ -89,11 +89,11 @@ Function updateManager {
 	}
 }
 
-Function CreateUser
+function CreateUser
 {
 	<#
 		.SYNOPSIS
-		Function to create a user account
+		function to create a user account
 		.DESCRIPTION
 		This function is used to create a new user account in AD.
 		.PARAMETER Name
@@ -102,18 +102,18 @@ Function CreateUser
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True,HelpMessage='What is the full name of the user?')][String()]$fullUserName
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String()]$fullUserName
 	)
 
-		Function createsamAccountName
+		function createsamAccountName
 		{
 			#steps to create username for environment
 			
 			<#
 				.SYNOPSIS
-				Function to formulate the samAccountName of an account.
+				function to formulate the samAccountName of an account.
 				.DESCRIPTION
-				Function used to forumulate a samAccountName for the environment.
+				function used to forumulate a samAccountName for the environment.
 				.PARAMETER NameInput
 				The full name of the user
 				.PARAMETER Type
@@ -124,12 +124,12 @@ Function CreateUser
 			
 			[CmdletBinding()]
 			param(
-				[Parameter(Mandatory=$True,HelpMessage='What is the name of the person?')][String()]$NameInput,
-				[Parameter(Mandatory=$True,HelpMessage='What is the type of samAccountName is it, first.last or first inital and last name?')][String()]$Type,
-				[Parameter(Mandatory=$True,HelpMessage='What is the password you would like to set?')][String()]$Password
+				[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the person?')][String()]$NameInput,
+				[Parameter(Mandatory=$TRUE,HelpMessage='What is the type of samAccountName is it, first.last or first inital and last name?')][String()]$Type,
+				[Parameter(Mandatory=$TRUE,HelpMessage='What is the password you would like to set?')][String()]$Password
 			)
 				
-			Function initallastname
+			function initallastname
 			{
 				$FirstInitial =  $NameInput.split(" ")[0].Substring(0,1).ToLower();
 				$LastName = $NameInput.split(" ")[1].ToLower();
@@ -139,17 +139,28 @@ Function CreateUser
 				return $outputName;
 			}
 			
-			Function firstnamelastname
+			function firstnamelastname
 			{
 				$OutputName = ($NameInput.replace(" ",".")).ToLower();
 				
 				return $outputName;
 			}
 			
+			function lastnameinitial
+			{
+				$FirstInitial =  $NameInput.split(" ")[0].Substring(0,1).ToLower();
+				$LastName = $NameInput.split(" ")[1].ToLower();
+				
+				$OutputName = ($Lastname+$FirstIntial);
+				
+				return $OutputName;
+			}
+			
 			switch ($type)
 			{
 				{$_ -in "initallastname","iln"} {$samAccountName = initallastname};
 				{$_ -in "firstnamelastname","fln"} {$samAccountName = firstnamelastname};
+				{$_ -in "lastnameinital","lni"} {$samAccountName = lastnameinitial};
 			}
 			
 			return $samAccountName;
@@ -159,6 +170,7 @@ Function CreateUser
 	{
 		"Initial" {$samAccountName = createsamAccountName $fullUserName initallastname};
 		"FullName" {$samAccountName = createsamAccountName $fullUserName firstnamelastname};
+		"LastNameInitial" {$samAccountName = createsamAccountname $fullUserName LastNameInitial};
 	}
 	
 	$userPrincipalName = "$samAccountName@test.com"
@@ -167,8 +179,8 @@ Function CreateUser
 	{
 		"single" {New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount}
 		"template" {
-				$TemplateAccount = Get-ADUser -Identity "templateaccount"
-				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName
+				$TemplateAccount = Get-ADUser -Identity "templateaccount";
+				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;
 			}
 	}
 	
