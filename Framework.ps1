@@ -217,9 +217,7 @@ Class createuser
     [string]$EmployeeLocation
     [ValidatePattern("^OU=")]
     [String]$OU
-    hidden static [String]$Domain = "DC=ISDA,DC=IDAHO,DC=GOV"
-
-    #OU=Onsite,OU=Migated Users,OU=ISDA,
+    hidden static [String]$Domain = ""
 
     [string]static GetNewUserName([string]$FirstName,[string]$LastName){
         
