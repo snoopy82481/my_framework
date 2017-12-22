@@ -8,8 +8,11 @@ Write-Output "I'm version 3.0 or above";
 #Start GLOBAL Params
 
 #.NET Dependancies
-[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices")
-[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices.AccountManagement")
+Add-Type -AssemblyName System.DirectoryServices;
+Add-Type -AssemblyName System.DirectoryServices.AccountManagement;
+
+#[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices");
+#[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices.AccountManagement");
 
 #Imports
 Import-Module ActiveDirectory
@@ -50,7 +53,7 @@ function updateManager {
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the manager you are changing to?')][String()]$managerName
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the manager you are changing to?')][String()]$managerName,
 		[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the file you are going to use?')][String()]$file
 	)
 
@@ -98,12 +101,14 @@ function CreateUser
 		This function is used to create a new user account in AD.
 		.PARAMETER Name
 		The full name of the user
+		.PARAMETER Template
+		Are you using a template account to copy from?
 	#>
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String()]$fullUserName
-		[Parameter(Mandatory=$FALSE,HelpMessage='Will this be based off a template or no?')][Bool]$Template
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String()]$fullUserName,
+		[Parameter(Mandatory=$FALSE,HelpMessage='Will this be based off a template or no?')][Bool()]$Template
 	)
 
 		function createsamAccountName
@@ -198,4 +203,62 @@ function CreateUser
 }
 #End FUNCTIONS
 
-#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($context, "a_valid_samaccountname")
+#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($PrincipleContext, "a_valid_samaccountname")
+#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($PrincipleContext, "sbeale")
+
+Class createuser
+{
+    [ValidatePattern("^[a-z]+$")]
+    [String]$FirstName
+    [ValidatePattern("^[a-z]+$")]
+    [String]$LastName
+    hidden [string]$UserName
+    [ValidateSet('Onsite','Offsite')]
+    [string]$EmployeeLocation
+    [ValidatePattern("^OU=")]
+    [String]$OU
+    hidden static [String]$Domain = "DC=ISDA,DC=IDAHO,DC=GOV"
+
+    #OU=Onsite,OU=Migated Users,OU=ISDA,
+
+    [string]static GetNewUserName([string]$FirstName,[string]$LastName){
+        
+        $UName = ($FirstName.Substring(0,1) + $LastName).ToLower()
+
+        $AllNames = Get-ADUser -Filter "SamaccountName -like '$UName*'"
+
+        if($AllNames){
+            [int16]$Count = $AllNames.distinguishedname.count
+
+            if($count > 0){
+                [int]$Advance = $Count++
+
+
+            }
+        }else{
+            
+        }
+
+        return $SamAccountName
+    }
+
+    createuser(){
+    }
+
+    createuser ([string]$FirstName,[string]$LastName,[string]$EmployeeLocation){
+        $UserOU = ""
+
+        $this.EmployeeLocation = $EmployeeLocation
+        $this.FirstName = $FirstName
+        $this.LastName = $LastName
+        $this.UserName = [createuser]::GetNewUserName($FirstName,$LastName)
+
+    }
+
+
+    [createuser]Create(){
+        New-ADUser -SamAccountName $this.UserName -GivenName $this.FirstName -Surname $this.LastName -UserPrincipalName $this.UserName -DisplayName ("$this.FirstName $this.LastName") -Path $this.OU
+
+        return $this
+    }
+}
