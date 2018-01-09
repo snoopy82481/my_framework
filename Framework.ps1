@@ -2,17 +2,14 @@
   This is the file to get started with the framework.
 #>
 
-#Requires -version 3.0;
-Write-Output "I'm version 3.0 or above";
+#Requires -version 5.0;
+Write-Output "I'm version 5.0 or above";
 
 #Start GLOBAL Params
 
 #.NET Dependancies
 Add-Type -AssemblyName System.DirectoryServices;
 Add-Type -AssemblyName System.DirectoryServices.AccountManagement;
-
-#[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices");
-#[System.Reflection.Assembly]::LoadWithPartialName("System.DirectoryServices.AccountManagement");
 
 #Imports
 Import-Module ActiveDirectory
@@ -31,14 +28,21 @@ $foldersProgramFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86");
 [String]${UserDomain},[String]${UserName} = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name.split("\");
 $localHostName = [System.Net.Dns]::GetHostEntry("localhost").HostName;
 $RidMaster = ([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).RidRoleOwner.name;
-$DomainName = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain().name
-$PrincipleContext = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext(1,$DomainName)
+$DomainName = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain().name;
+$PrincipleContext = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext(1,$DomainName);
+$defaultOU = [regex]::Match((Get-ADUser $UserName).distinguishedName, '(?=OU)(.*\n?)(?<=.)').value;
+$defaultDomain = [regex]::Match((Get-ADUser $UserName).distinguishedName, '(?=DC)(.*\n?)(?<=.)').value;
+
+#Constants
+$keyFile = "$foldersMyDocuments\AES.key"
+$passwordFile = "$foldersMyDocuments\password.txt"
 
 #End GLOBAL Params
 
 #Start FUNCTIONS
 
-function updateManager {
+function updateManager
+{
   #Convert to use .NET vs AD module
 	<#
 		.SYNOPSIS
@@ -99,112 +103,79 @@ function CreateUser
 		function to create a user account
 		.DESCRIPTION
 		This function is used to create a new user account in AD.
-		.PARAMETER Name
+		.PARAMETER fullUserName
 		The full name of the user
+		.PARAMETER Type
+		What type of samAccountName is it, first.last or first inital and last name.  You can use initallastname, iln, firstnamelastname, fnln, firstnamedotlastname, fndln, lastnameinitial, lni.
 		.PARAMETER Template
 		Are you using a template account to copy from?
 	#>
 	
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String()]$fullUserName,
-		[Parameter(Mandatory=$FALSE,HelpMessage='Will this be based off a template or no?')][Bool()]$Template
+		[Parameter(Mandatory=$TRUE,HelpMessage='What is the full name of the user?')][String]$fullUserName,
+        [Parameter(Mandatory=$TRUE,HelpMessage='What type of samAccountName?')][String]$type,
+		[Parameter(Mandatory=$FALSE,HelpMessage='Will this be based off a template or no?')][Bool]$Template
 	)
 
-		function createsamAccountName
-		{
-			#steps to create username for environment
-			
-			<#
-				.SYNOPSIS
-				function to formulate the samAccountName of an account.
-				.DESCRIPTION
-				function used to forumulate a samAccountName for the environment.
-				.PARAMETER NameInput
-				The full name of the user
-				.PARAMETER Type
-				What type of samAccountName is it, first.last or first inital and last name.  You can use initallastname, iln, firstnamelastname, fln.
-				.PARAMETER Password
-				The password that will be set on account creation
-			#>
-			
-			[CmdletBinding()]
-			param(
-				[Parameter(Mandatory=$TRUE,HelpMessage='What is the name of the person?')][String()]$NameInput,
-				[Parameter(Mandatory=$TRUE,HelpMessage='What is the type of samAccountName is it, first.last or first inital and last name?')][String()]$Type,
-				[Parameter(Mandatory=$TRUE,HelpMessage='What is the password you would like to set?')][String()]$Password
-			)
-				
-			function initallastname
-			{
-				$FirstInitial =  $NameInput.split(" ")[0].Substring(0,1).ToLower();
-				$LastName = $NameInput.split(" ")[1].ToLower();
-				
-				$OutputName = ("{0}{1}" -f $FirstInitial,$LastName).ToLower();
-				
-				return $outputName;
-			}
-			
-			function firstnamelastname
-			{
-				$OutputName = ($NameInput.replace(" ",".")).ToLower();
-				
-				return $outputName;
-			}
-			
-			function lastnameinitial
-			{
-				$FirstInitial =  $NameInput.split(" ")[0].Substring(0,1).ToLower();
-				$LastName = $NameInput.split(" ")[1].ToLower();
-				
-				$OutputName = ($Lastname+$FirstIntial);
-				
-				return $OutputName;
-			}
-			
-			switch ($type)
-			{
-				{$_ -in "initallastname","iln"} {$samAccountName = initallastname};
-				{$_ -in "firstnamelastname","fln"} {$samAccountName = firstnamelastname};
-				{$_ -in "lastnameinital","lni"} {$samAccountName = lastnameinitial};
-			}
-			
-			return $samAccountName;
-		}
-	
+    [String]${FirstName}, [String]${LastName} = $fullUserName.split(" ");
+    [String]$FirstInitial = $FirstName.Substring(0,1).ToLower();
+
+    [String]$FirstName = (Get-Culture).TextInfo.ToTitleCase($FirstName);
+    [String]$LastName = (Get-Culture).TextInfo.ToTitleCase($LastName);
+
+    $Key = Get-Content $keyFile
+    $Password = Get-Content $PasswordFile | ConvertTo-SecureString -Key $key
+
+		
 	switch ($type)
 	{
-		"Initial" {$samAccountName = createsamAccountName $fullUserName initallastname};
-		"FullName" {$samAccountName = createsamAccountName $fullUserName firstnamelastname};
-		"LastNameInitial" {$samAccountName = createsamAccountname $fullUserName LastNameInitial};
+		{$_ -in "initallastname","iln"} {$samAccountName = "$FirstInitial$LastName"};
+		{$_ -in "firstnamelastname","fnln"} {$samAccountName = "$FirstName$LastName"};
+        {$_ -in "firstnamedotlastname","fndln"} {$samAccountName = "$FirstName.$LastName"};
+		{$_ -in "lastnameinital","lni"} {$samAccountName = "$Lastname$FirstInitial"};
 	}
 	
-	$userPrincipalName = "$samAccountName@test.com"
+    Try
+    {
+		$samAccountName = $samAccountName.SubString(0,20).ToLower();
+    }
+    catch
+    {
+        $samAccountName = $samAccountName.ToLower();
+    }
+
+	$userPrincipalName = "$samAccountName@$DomainName"
 	
-	if($Template){
+	if($Template)
+    {
 		$TemplateAccount = Get-ADUser -Identity "templateaccount";
 		New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;			
 	}
 	else
 	{
-		New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount
+		New-ADUser -Name $fullUserName -GivenName $FirstName -Surname $LastName -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount
 	}
-	
-	<#
-	switch ($stuff)
-	{
-		default {New-ADUser -Name $NameInput -GivenName ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[0])) -Surname ((Get-Culture).Textinfo.ToTitleCase($NameInput.split(" ")[1])) -samAccountName $samAccountName -UserPrincipalName $userPrincipalName -AccountPassword $Password -PassThru | Enable-ADAccount}
-		template {
-				$TemplateAccount = Get-ADUser -Identity "templateaccount";
-				New-ADUser -Instance $TemplateAccount -SamAccountName $samAccountName;
-			}
-	}
-	#>	
 }
+
+Function createKeyFile
+{
+    $Key = Byte[] 32
+    [Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($Key)
+    $Key | out-file $KeyFile
+}
+
+Function createPasswordFile
+{
+    $Key = Get-Content $keyFile
+    $Password = "Temppassword1$" | ConvertTo-SecureString -AsPlainText -Force
+    $Password | ConvertFrom-SecureString -Key $Key | Out-File $passwordFile
+}
+
 #End FUNCTIONS
 
 #$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($PrincipleContext, "a_valid_samaccountname")
-#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($PrincipleContext, "sbeale")
+#$user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($PrincipleContext, "mmeyers")
 
 Class createuser
 {
@@ -216,10 +187,10 @@ Class createuser
     [ValidateSet('Onsite','Offsite')]
     [string]$EmployeeLocation
     [ValidatePattern("^OU=")]
-    [String]$OU
-    hidden static [String]$Domain = ""
-
-    [string]static GetNewUserName([string]$FirstName,[string]$LastName){
+    [String]$OU = $defaultOU
+    hidden static [String]$Domain = $defaultDomain
+        
+    [string]SamAccountName([string]$FirstName,[string]$LastName){
         
         $UName = ($FirstName.Substring(0,1) + $LastName).ToLower()
 
@@ -237,9 +208,10 @@ Class createuser
             
         }
 
-        return $SamAccountName
+        return $this.SamAccountName
     }
-
+   
+    
     createuser(){
     }
 
@@ -249,7 +221,7 @@ Class createuser
         $this.EmployeeLocation = $EmployeeLocation
         $this.FirstName = $FirstName
         $this.LastName = $LastName
-        $this.UserName = [createuser]::GetNewUserName($FirstName,$LastName)
+        $this.UserName = [createuser]::SamAccountName($FirstName,$LastName)
 
     }
 
